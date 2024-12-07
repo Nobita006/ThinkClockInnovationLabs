@@ -118,8 +118,8 @@ impedance_data['Rectified_Impedance'] = rectified_values
 # ----------------------------------------
 # Check data distributions before filtering
 # ----------------------------------------
-print("Summary of Re, Rct, Rectified_Impedance before filtering:")
-print(impedance_data[['Re','Rct','Rectified_Impedance']].describe())
+# print("Summary of Re, Rct, Rectified_Impedance before filtering:")
+# print(impedance_data[['Re','Rct','Rectified_Impedance']].describe())
 
 # ----------------------------------------
 # Filtering Data
@@ -131,7 +131,7 @@ impedance_data_clean = impedance_data_clean[
     (impedance_data_clean['Rectified_Impedance'] > 0) & (impedance_data_clean['Rectified_Impedance'] < 10)
 ]
 
-print("Original impedance_data length:", len(impedance_data))
+print("\nOriginal impedance_data length:", len(impedance_data))
 print("Filtered impedance_data length:", len(impedance_data_clean))
 
 # Update references for plotting
@@ -208,4 +208,4 @@ fig2.update_layout(
 )
 fig2.show()
 
-print("Plots generated successfully. ")
+print("\nPlots generated successfully.")
