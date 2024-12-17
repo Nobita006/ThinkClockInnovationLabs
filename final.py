@@ -6,7 +6,7 @@ import os
 # ----------------------------------------
 # User Input for battery_id
 # ----------------------------------------
-battery_id = input("Enter the battery_id (e.g. B0047) or keep blank to select all: ").strip()
+battery_input = input("Enter battery IDs separated by commas (e.g., B0047,B0050) or keep blank to select all: ").strip()
 
 # ----------------------------------------
 # Step 1: Load and Parse metadata.csv
@@ -35,18 +35,19 @@ metadata['Rct'] = pd.to_numeric(metadata['Rct'], errors='coerce')
 metadata['Capacity'] = pd.to_numeric(metadata['Capacity'], errors='coerce')
 
 # ----------------------------------------
-# Filter by user-selected battery_id
+# Filter by user-selected battery_ids
 # ----------------------------------------
-if battery_id:
-    metadata = metadata[metadata['battery_id'] == battery_id].copy()
+if battery_input:
+    # Split the input string into a list of battery IDs
+    selected_batteries = [b_id.strip() for b_id in battery_input.split(',')]
+    metadata = metadata[metadata['battery_id'].isin(selected_batteries)].copy()
 else:
-    battery_id = 'all Batteries '
+    selected_batteries = metadata['battery_id'].unique()
+    battery_input = 'all Batteries'
 
-# If no rows for this battery_id, just print a message and stop
+# If no rows for these battery_ids, print a message and exit
 if len(metadata) == 0:
-    print(f"No data found for battery_id {battery_id}. Please try another ID.")
-    # You could either exit here or continue with no data.
-    # We'll just exit this script:
+    print(f"No data found for battery IDs {selected_batteries}. Please try other IDs.")
     raise SystemExit
 
 # ----------------------------------------
@@ -55,13 +56,14 @@ if len(metadata) == 0:
 impedance_data = metadata[metadata['type'] == 'impedance'].copy()
 discharge_data = metadata[metadata['type'] == 'discharge'].copy()
 
-# Assign cycle numbers to discharge operations
-discharge_data = discharge_data.sort_values('start_time').reset_index(drop=True)
-discharge_data['cycle_number'] = discharge_data.index + 1
+# Assign cycle numbers per battery
+# For discharge operations
+discharge_data = discharge_data.sort_values(['battery_id', 'start_time']).reset_index(drop=True)
+discharge_data['cycle_number'] = discharge_data.groupby('battery_id').cumcount() + 1
 
-# Sort impedance operations by time and assign a measurement number
-impedance_data = impedance_data.sort_values('start_time').reset_index(drop=True)
-impedance_data['impedance_cycle_number'] = impedance_data.index + 1
+# For impedance operations
+impedance_data = impedance_data.sort_values(['battery_id', 'start_time']).reset_index(drop=True)
+impedance_data['impedance_cycle_number'] = impedance_data.groupby('battery_id').cumcount() + 1
 
 # ----------------------------------------
 # Function to safely parse Rectified_Impedance
@@ -116,19 +118,15 @@ for idx, row in impedance_data.iterrows():
 impedance_data['Rectified_Impedance'] = rectified_values
 
 # ----------------------------------------
-# Check data distributions before filtering
-# ----------------------------------------
-# print("Summary of Re, Rct, Rectified_Impedance before filtering:")
-# print(impedance_data[['Re','Rct','Rectified_Impedance']].describe())
-
-# ----------------------------------------
 # Filtering Data
+# Remove entries with NaNs and outliers
 impedance_data_clean = impedance_data.dropna(subset=['Re','Rct','Rectified_Impedance'])
 
+# Apply filtering thresholds based on realistic ranges
 impedance_data_clean = impedance_data_clean[
-    (impedance_data_clean['Re'] > 0) & (impedance_data_clean['Re'] < 10) &
-    (impedance_data_clean['Rct'] > 0) & (impedance_data_clean['Rct'] < 10) &
-    (impedance_data_clean['Rectified_Impedance'] > 0) & (impedance_data_clean['Rectified_Impedance'] < 10)
+    (impedance_data_clean['Re'] > 0) & (impedance_data_clean['Re'] < 1) &
+    (impedance_data_clean['Rct'] > 0) & (impedance_data_clean['Rct'] < 1) &
+    (impedance_data_clean['Rectified_Impedance'] > 0) & (impedance_data_clean['Rectified_Impedance'] < 1)
 ]
 
 print("\nOriginal impedance_data length:", len(impedance_data))
@@ -141,30 +139,48 @@ impedance_data = impedance_data_clean
 if len(impedance_data) == 0:
     print("No impedance data after filtering. Adjust your filters or check the data.")
     # We can proceed but the plots will be empty.
-    
+
 # ----------------------------------------
 # Plotting with Plotly
 # ----------------------------------------
-# Plot Re and Rct
-fig = go.Figure()
-fig.add_trace(go.Scatter(
-    x=impedance_data['impedance_cycle_number'],
-    y=impedance_data['Re'],
-    mode='lines+markers',
-    name='Electrolyte Resistance (Re)'
-))
-fig.add_trace(go.Scatter(
-    x=impedance_data['impedance_cycle_number'],
-    y=impedance_data['Rct'],
-    mode='lines+markers',
-    name='Charge Transfer Resistance (Rct)',
-    yaxis='y2'
-))
+import plotly.express as px
 
-fig.update_layout(
-    title=f'Re and Rct Over Impedance Measurements for {battery_id}',
+# Get list of battery_ids in the data
+battery_ids = impedance_data['battery_id'].unique()
+
+# Plot Re and Rct together with dual y-axes
+fig_combined = go.Figure()
+
+# Loop over each battery to add traces for Re and Rct
+for b_id in battery_ids:
+    battery_data = impedance_data[impedance_data['battery_id'] == b_id]
+    
+    # Re trace
+    fig_combined.add_trace(go.Scatter(
+        x=battery_data['impedance_cycle_number'],
+        y=battery_data['Re'],
+        mode='lines+markers',
+        name=f'Re ({b_id})',
+        yaxis='y1'
+    ))
+    
+    # Rct trace
+    fig_combined.add_trace(go.Scatter(
+        x=battery_data['impedance_cycle_number'],
+        y=battery_data['Rct'],
+        mode='lines+markers',
+        name=f'Rct ({b_id})',
+        yaxis='y2'
+    ))
+
+# Update layout with dual y-axes
+fig_combined.update_layout(
+    title=f'Re and Rct Over Impedance Measurements for Selected Batteries',
     xaxis_title='Impedance Measurement Number',
-    yaxis_title='Re (Ohms)',
+    yaxis=dict(
+        title='Re (Ohms)',
+        side='left'
+    ),
     yaxis2=dict(
         title='Rct (Ohms)',
         overlaying='y',
@@ -173,37 +189,47 @@ fig.update_layout(
     legend=dict(x=0, y=1.1, orientation='h'),
     template='plotly_white'
 )
-fig.show()
 
-# Plot Rectified_Impedance
-fig_batt = go.Figure()
-fig_batt.add_trace(go.Scatter(
-    x=impedance_data['impedance_cycle_number'],
-    y=impedance_data['Rectified_Impedance'],
-    mode='lines+markers',
-    name='Battery Impedance (Rectified)'
-))
-fig_batt.update_layout(
-    title=f'Battery (Rectified) Impedance Over Impedance Measurements for {battery_id}',
+fig_combined.show()
+
+# Plot Rectified Impedance for each battery
+fig_rect = go.Figure()
+for b_id in battery_ids:
+    battery_data = impedance_data[impedance_data['battery_id'] == b_id]
+    fig_rect.add_trace(go.Scatter(
+        x=battery_data['impedance_cycle_number'],
+        y=battery_data['Rectified_Impedance'],
+        mode='lines+markers',
+        name=f'Rectified Impedance ({b_id})'
+    ))
+
+fig_rect.update_layout(
+    title=f'Rectified Impedance Over Impedance Measurements for Selected Batteries',
     xaxis_title='Impedance Measurement Number',
     yaxis_title='Rectified Impedance (Ohms)',
+    legend=dict(x=0, y=1.1, orientation='h'),
     template='plotly_white'
 )
-fig_batt.show()
+fig_rect.show()
 
-# Plot Capacity to show aging (for discharge data)
+# Plot Capacity over cycles for each battery
+battery_ids_discharge = discharge_data['battery_id'].unique()
+
 fig2 = go.Figure()
-fig2.add_trace(go.Scatter(
-    x=discharge_data['cycle_number'],
-    y=discharge_data['Capacity'],
-    mode='lines+markers',
-    name='Capacity (Ahr)'
-))
+for b_id in battery_ids_discharge:
+    battery_data = discharge_data[discharge_data['battery_id'] == b_id]
+    fig2.add_trace(go.Scatter(
+        x=battery_data['cycle_number'],
+        y=battery_data['Capacity'],
+        mode='lines+markers',
+        name=f'Capacity ({b_id})'
+    ))
 
 fig2.update_layout(
-    title=f'Capacity Fade Over Discharge Cycles for {battery_id}',
+    title=f'Capacity Fade Over Discharge Cycles for Selected Batteries',
     xaxis_title='Cycle Number',
     yaxis_title='Capacity (Ahr)',
+    legend=dict(x=0, y=1.1, orientation='h'),
     template='plotly_white'
 )
 fig2.show()
