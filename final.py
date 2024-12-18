@@ -175,18 +175,29 @@ for b_id in battery_ids:
 
 # Update layout with dual y-axes
 fig_combined.update_layout(
-    title=f'Re and Rct Over Impedance Measurements for {'battery_id'}',
+    title=dict(
+        text=f'Re and Rct Over Impedance Measurements for {battery_input}',
+        x=0.5,  # Center align title
+        y=0.95,  # Adjust title's vertical position
+        font=dict(size=18),  # Increase font size
+    ),
     xaxis_title='Impedance Measurement Number',
     yaxis=dict(
         title='Re (Ohms)',
-        side='left'
+        automargin=True  # Auto-adjust left margin
     ),
     yaxis2=dict(
         title='Rct (Ohms)',
         overlaying='y',
-        side='right'
+        side='right',
+        automargin=True  # Auto-adjust right margin
     ),
-    legend=dict(x=0, y=1.1, orientation='h'),
+    margin=dict(t=100, b=70),  # Top and bottom margin
+    legend=dict(
+        x=0.5, y=-0.2,  # Move legend below the graph
+        xanchor='center', yanchor='top',
+        orientation='h'
+    ),
     template='plotly_white'
 )
 
@@ -203,11 +214,21 @@ for b_id in battery_ids:
         name=f'Rectified Impedance ({b_id})'
     ))
 
+# Rectified Impedance Plot
 fig_rect.update_layout(
-    title=f'Rectified Impedance Over Impedance Measurements for {'battery_id'}',
+    title=dict(
+        text=f'Rectified Impedance Over Impedance Measurements for {battery_input}',
+        x=0.5, y=0.95,
+        font=dict(size=18),
+    ),
     xaxis_title='Impedance Measurement Number',
     yaxis_title='Rectified Impedance (Ohms)',
-    legend=dict(x=0, y=1.1, orientation='h'),
+    margin=dict(t=100, b=70),
+    legend=dict(
+        x=0.5, y=-0.2,
+        xanchor='center', yanchor='top',
+        orientation='h'
+    ),
     template='plotly_white'
 )
 fig_rect.show()
@@ -226,10 +247,19 @@ for b_id in battery_ids_discharge:
     ))
 
 fig2.update_layout(
-    title=f'Capacity Fade Over Discharge Cycles for {'battery_id'}',
+    title=dict(
+        text=f'Capacity Fade Over Discharge Cycles for {battery_input}',
+        x=0.5, y=0.95,
+        font=dict(size=18),
+    ),
     xaxis_title='Cycle Number',
     yaxis_title='Capacity (Ahr)',
-    legend=dict(x=0, y=1.1, orientation='h'),
+    margin=dict(t=100, b=70),
+    legend=dict(
+        x=0.5, y=-0.2,
+        xanchor='center', yanchor='top',
+        orientation='h'
+    ),
     template='plotly_white'
 )
 fig2.show()
