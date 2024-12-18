@@ -175,7 +175,7 @@ for b_id in battery_ids:
 
 # Update layout with dual y-axes
 fig_combined.update_layout(
-    title=f'Re and Rct Over Impedance Measurements for Selected Batteries',
+    title=f'Re and Rct Over Impedance Measurements for {'battery_id'}',
     xaxis_title='Impedance Measurement Number',
     yaxis=dict(
         title='Re (Ohms)',
@@ -204,7 +204,7 @@ for b_id in battery_ids:
     ))
 
 fig_rect.update_layout(
-    title=f'Rectified Impedance Over Impedance Measurements for Selected Batteries',
+    title=f'Rectified Impedance Over Impedance Measurements for {'battery_id'}',
     xaxis_title='Impedance Measurement Number',
     yaxis_title='Rectified Impedance (Ohms)',
     legend=dict(x=0, y=1.1, orientation='h'),
@@ -226,7 +226,7 @@ for b_id in battery_ids_discharge:
     ))
 
 fig2.update_layout(
-    title=f'Capacity Fade Over Discharge Cycles for Selected Batteries',
+    title=f'Capacity Fade Over Discharge Cycles for {'battery_id'}',
     xaxis_title='Cycle Number',
     yaxis_title='Capacity (Ahr)',
     legend=dict(x=0, y=1.1, orientation='h'),
